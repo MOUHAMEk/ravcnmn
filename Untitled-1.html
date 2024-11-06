@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi du Projet</title>
+    
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Importation de PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background-color: #f4f6f9;
+        }
+
+        #project-details {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .input-group {
+            margin-top: 10px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input, textarea, .progress-bar-container {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .button {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .button:hover {
+            background-color: #2980b9;
+        }
+
+        .progress-bar-container, .general-progress-container {
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            height: 25px; /* Ajusté pour une apparence plus esthétique */
+            position: relative;
+        }
+
+        .progress-bar, .general-progress-bar {
+            height: 100%;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            line-height: 25px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, #4caf50, #81c784);
+        }
+
+        .general-progress-bar {
+            background: linear-gradient(90deg, #ff9800, #ffb74d);
+        }
+
+        .task-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+
+        .task-title {
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .delete-icon {
+            font-size: 18px;
+            color: red;
+            cursor: pointer;
+            float: right;
+            margin-top: -24px;
+        }
+
+        .subtasks {
+            margin-top: 10px;
+        }
+
+        .subtask {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .subtask input[type="text"] {
+            flex: 2;
+            margin-right: 10px;
+        }
+
+        .subtask input[type="number"] {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        #observations {
+            margin-top: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+        }
+        /* Styling remains the same */
+    </style>
+</head>
+<body>
+    <div id="project-details">
+        <h1>Projet de construction de siège du conseil économique social et environnemental</h1>
+    
+        <div class="input-group">
+            <label>Date de début du projet:</label>
+            <input type="date" id="start-date" onchange="saveData()">
+        </div>
+    
+        <div class="input-group">
+            <label>Date de fin du projet:</label>
+            <input type="date" id="end-date" onchange="saveData()">
+        </div>
+    
+        <h3>Progression des Délais</h3>
+        <div class="progress-bar-container">
+            <div id="delay-progress" class="progress-bar">0%</div>
+        </div>
+        
+        <h3>Progression Générale</h3>
+        <div class="general-progress-container">
+            <div id="general-progress" class="general-progress-bar">0%</div>
+        </div>
+        
+        <h3>Ajouter Tâches</h3>
+        <input type="text" id="task-title" placeholder="Titre de la tâche principale" />
+        <button class="button" onclick="addTask()">Ajouter une Tâche</button>
+    
+        <div id="tasks"></div>
+    
+        <div class="input-group">
+            <label>Observations:</label>
+            <textarea id="observations" placeholder="Ajouter vos observations ici..." oninput="saveData()"></textarea>
+        </div>
+    
+        <div class="button-group">
+            <button class="button" onclick="calculateProgress()">Actualiser la progression des délais</button>
+            <button class="button" onclick="generatePDF()">Générer le PDF</button>
+            
+          
+        
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", loadData);
+
+    function calculateProgress() {
+        const startDate = new Date(document.getElementById("start-date").value);
+        const endDate = new Date(document.getElementById("end-date").value);
+        const today = new Date();
+
+        if (startDate && endDate && today >= startDate && today <= endDate) {
+            const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+            const elapsedDays = (today - startDate) / (1000 * 60 * 60 * 24);
+            const delayProgress = Math.min(100, (elapsedDays / totalDays) * 100).toFixed(0);
+
+            document.getElementById("delay-progress").style.width = delayProgress + "%";
+            document.getElementById("delay-progress").innerText = delayProgress + "%";
+        } else {
+            document.getElementById("delay-progress").style.width = "0%";
+            document.getElementById("delay-progress").innerText = "0%";
+        }
+        saveData();
+    }
+
+    function addTask() {
+        const tasksDiv = document.getElementById("tasks");
+        const taskTitle = document.getElementById("task-title").value;
+
+        if (!taskTitle) {
+            alert("Veuillez entrer un titre pour la tâche.");
+            return;
+        }
+
+        const taskBox = document.createElement("div");
+        taskBox.className = "task-box";
+        
+        const taskTitleElem = document.createElement("div");
+        taskTitleElem.className = "task-title";
+        taskTitleElem.textContent = taskTitle;
+
+        const deleteTaskIcon = document.createElement("span");
+        deleteTaskIcon.className = "delete-icon";
+        deleteTaskIcon.innerHTML = "&#10005;";
+        deleteTaskIcon.onclick = function() { deleteTask(taskBox); };
+
+        taskTitleElem.appendChild(deleteTaskIcon);
+        taskBox.appendChild(taskTitleElem);
+
+        const taskProgressContainer = document.createElement("div");
+        taskProgressContainer.className = "progress-bar-container";
+        const taskProgressBar = document.createElement("div");
+        taskProgressBar.className = "progress-bar";
+        taskProgressBar.textContent = "0%";
+        taskProgressContainer.appendChild(taskProgressBar);
+        taskBox.appendChild(taskProgressContainer);
+
+        const addSubtaskButton = document.createElement("button");
+        addSubtaskButton.className = "button";
+        addSubtaskButton.textContent = "Ajouter des sous-tâches";
+        addSubtaskButton.onclick = function() { addSubtask(taskBox, taskProgressBar); };
+        taskBox.appendChild(addSubtaskButton);
+
+        const subtasksDiv = document.createElement("div");
+        subtasksDiv.className = "subtasks";
+        taskBox.appendChild(subtasksDiv);
+
+        tasksDiv.appendChild(taskBox);
+        document.getElementById("task-title").value = "";
+
+        saveData();
+    }
+
+    function deleteTask(taskBox) {
+        taskBox.remove();
+        updateGeneralProgress();
+        saveData();
+    }
+
+    function addSubtask(taskBox, taskProgressBar) {
+        const subtasksDiv = taskBox.querySelector(".subtasks");
+
+        const subtaskDiv = document.createElement("div");
+        subtaskDiv.className = "subtask";
+
+        const taskInput = document.createElement("input");
+        taskInput.type = "text";
+        taskInput.placeholder = "Nom de la sous-tâche";
+        taskInput.oninput = saveData;
+
+        const percentageInput = document.createElement("input");
+        percentageInput.type = "number";
+        percentageInput.placeholder = "Pourcentage";
+        percentageInput.min = 0;
+        percentageInput.max = 100;
+        percentageInput.oninput = function() {
+            updateTaskProgress(taskBox, taskProgressBar);
+        };
+
+        const deleteSubtaskIcon = document.createElement("span");
+        deleteSubtaskIcon.className = "delete-icon";
+        deleteSubtaskIcon.innerHTML = "&#10005;";
+        deleteSubtaskIcon.onclick = function() { deleteSubtask(subtaskDiv, taskBox, taskProgressBar); };
+
+        subtaskDiv.appendChild(taskInput);
+        subtaskDiv.appendChild(percentageInput);
+        subtaskDiv.appendChild(deleteSubtaskIcon);
+        subtasksDiv.appendChild(subtaskDiv);
+
+        saveData();
+    }
+
+    function deleteSubtask(subtaskDiv, taskBox, taskProgressBar) {
+        subtaskDiv.remove();
+        updateTaskProgress(taskBox, taskProgressBar);
+        saveData();
+    }
+
+    function updateTaskProgress(taskBox, taskProgressBar) {
+        const subtasks = taskBox.querySelectorAll(".subtask input[type='number']");
+        let totalPercentage = 0;
+        let subtaskCount = 0;
+
+        subtasks.forEach(input => {
+            const value = parseFloat(input.value);
+            if (!isNaN(value)) {
+                totalPercentage += value;
+                subtaskCount++;
+            }
+        });
+
+        const progress = subtaskCount > 0 ? (totalPercentage / subtaskCount).toFixed(0) : 0;
+        taskProgressBar.style.width = progress + "%";
+        taskProgressBar.innerText = progress + "%";
+
+        updateGeneralProgress();
+        saveData();
+    }
+
+    function updateGeneralProgress() {
+        const taskProgressBars = document.querySelectorAll(".task-box .progress-bar");
+        let totalProgress = 0;
+        let taskCount = 0;
+
+        taskProgressBars.forEach(bar => {
+            totalProgress += parseFloat(bar.style.width);
+            taskCount++;
+        });
+
+        const generalProgress = taskCount > 0 ? (totalProgress / taskCount).toFixed(0) : 0;
+        document.getElementById("general-progress").style.width = generalProgress + "%";
+        document.getElementById("general-progress").innerText = generalProgress + "%";
+    }
+
+    function saveData() {
+        const data = {
+            startDate: document.getElementById("start-date").value,
+            endDate: document.getElementById("end-date").value,
+            observations: document.getElementById("observations").value,
+            tasks: []
+        };
+
+        const taskBoxes = document.querySelectorAll(".task-box");
+        taskBoxes.forEach(taskBox => {
+            const task = {
+                title: taskBox.querySelector(".task-title").textContent.replace("✕", "").trim(),
+                subtasks: []
+            };
+
+            const subtaskInputs = taskBox.querySelectorAll(".subtask");
+            subtaskInputs.forEach(subtaskDiv => {
+                const subtask = {
+                    name: subtaskDiv.querySelector("input[type='text']").value,
+                    percentage: subtaskDiv.querySelector("input[type='number']").value
+                };
+                task.subtasks.push(subtask);
+            });
+
+            data.tasks.push(task);
+        });
+
+        localStorage.setItem("projectData", JSON.stringify(data));
+    }
+
+    function loadData() {
+        const savedData = JSON.parse(localStorage.getItem("projectData"));
+
+        if (savedData) {
+            document.getElementById("start-date").value = savedData.startDate;
+            document.getElementById("end-date").value = savedData.endDate;
+            document.getElementById("observations").value = savedData.observations;
+
+            savedData.tasks.forEach(task => {
+                document.getElementById("task-title").value = task.title;
+                addTask();
+
+                const lastTaskBox = document.querySelector(".task-box:last-child");
+                const taskProgressBar = lastTaskBox.querySelector(".progress-bar");
+
+                task.subtasks.forEach(subtask => {
+                    addSubtask(lastTaskBox, taskProgressBar);
+
+                    const lastSubtaskDiv = lastTaskBox.querySelector(".subtask:last-child");
+                    lastSubtaskDiv.querySelector("input[type='text']").value = subtask.name;
+                    lastSubtaskDiv.querySelector("input[type='number']").value = subtask.percentage;
+                });
+
+                updateTaskProgress(lastTaskBox, taskProgressBar);
+            });
+
+            calculateProgress();
+            updateGeneralProgress();
+        }
+    }
+
+   
+  
+
+
+    function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+        unit: 'cm',
+        format: 'a4',
+        orientation: 'portrait'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const firstPageTopMargin = 5;
+    const subsequentPagesTopMargin = 2.5;
+    const bottomMargin = 2.5;
+
+    // Function to add a border to the first page
+    function addBorderToFirstPage() {
+        const borderMargin = 0.7;
+        doc.setLineWidth(0.01);
+        doc.rect(borderMargin, borderMargin, pageWidth - 2 * borderMargin, pageHeight - 2 * borderMargin);
+    }
+
+    // Load and add background image to the first page
+    const imageUrl = "https://i.ibb.co/1X2JsvX/logo-nasser.png";
+    const imagePromise = new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = imageUrl;
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scaleFactor = 0.4;
+            const newWidth = img.width * scaleFactor;
+            const newHeight = img.height * scaleFactor;
+
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            ctx.drawImage(img, 0, 0, newWidth, newHeight);
+
+            canvas.toBlob((blob) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const compressedImageUrl = event.target.result;
+                    doc.addImage(compressedImageUrl, 'PNG', 0, 0, pageWidth, pageHeight);
+                    resolve();
+                };
+                reader.readAsDataURL(blob);
+            }, 'image/png', 0.4);
+        };
+    });
+
+    // Function to add a new page
+    function addNewPage() {
+        doc.addPage();
+    }
+
+    // Check if we exceed the page limit and need a new page
+    function checkPageLimit(currentYPosition, additionalSpaceNeeded, topMargin) {
+        if (currentYPosition + additionalSpaceNeeded > pageHeight - bottomMargin) {
+            addNewPage();
+            return topMargin;
+        }
+        return currentYPosition;
+    }
+
+    imagePromise.then(() => {
+        // Add border to the first page
+        addBorderToFirstPage();
+
+        // Set initial top margin for the first page
+        let currentY = firstPageTopMargin;
+
+        // Project title
+        doc.setFontSize(12);
+        doc.setFont("times", "normal");
+        const projectTitle = "Projet de construction de siège du conseil économique, social et environnemental";
+        const titleWidth = doc.getTextWidth(projectTitle);
+        doc.text(projectTitle, (pageWidth - titleWidth) / 2, currentY + 1);
+        currentY += 2;
+
+        // Current date formatted
+        const date = new Date();
+        const options = { day: '2-digit', month: 'long', year: 'numeric' };
+        const formattedDate = `Compte rendu du : ${date.toLocaleDateString('fr-FR', options)}`;
+        doc.text(formattedDate, (pageWidth - doc.getTextWidth(formattedDate)) / 2, currentY);
+        currentY += 1.5;
+
+        // Objective of the report
+        doc.setFontSize(12);
+        doc.setFont("times", "bold");
+        doc.text("1. Objectif du rapport :", 2.5, currentY);
+        doc.setFont("times", "normal");
+        doc.text("Présenter l'avancement physique du chantier pour évaluer les progrès par rapport au planning et identifier les priorités pour éviter tout risque de retard.", 2.5, currentY + 1, { maxWidth: pageWidth - 5 });
+        currentY += 3;
+
+        // Section "Avancement Physique"
+        doc.setFont("times", "bold");
+        doc.text("Avancement physique :", 2.5, currentY);
+        currentY += 1.5;
+
+        // Delay and General Progress Bars
+        const delayProgressValue = parseInt(document.getElementById("delay-progress").innerText) || 0;
+        const generalProgressValue = parseInt(document.getElementById("general-progress").innerText) || 0;
+
+        doc.setFont("times", "normal");
+        doc.text("Délai consomme", 2.5, currentY);
+        currentY += 0.5;
+
+        doc.setDrawColor(0);
+        doc.setFillColor(220);
+        doc.rect(2.5, currentY, pageWidth - 5, 0.5, "F");
+        doc.setFillColor(60, 179, 113);
+        doc.rect(2.5, currentY, ((pageWidth - 5) * delayProgressValue) / 100, 0.5, "F");
+        doc.setFont("times", "bold");
+        doc.text(`${delayProgressValue}%`, pageWidth / 2, currentY + 0.45, { align: "center" });
+        currentY += 1.5;
+
+        doc.setFont("times", "normal");
+        doc.text("Avancement Global", 2.5, currentY);
+        currentY += 0.5;
+
+        doc.setFillColor(220);
+        doc.rect(2.5, currentY, pageWidth - 5, 0.5, "F");
+        doc.setFillColor(30, 144, 255);
+        doc.rect(2.5, currentY, ((pageWidth - 5) * generalProgressValue) / 100, 0.5, "F");
+        doc.text(`${generalProgressValue}%`, pageWidth / 2, currentY + 0.45, { align: "center" });
+        currentY += 1.5;
+
+        doc.setFont("times", "bold");
+        doc.text("2. Détail d'avancement global", 2.5, currentY);
+        currentY += 1.5;
+
+        const taskBoxes = document.querySelectorAll(".task-box");
+
+        // Loop through tasks and subtasks, removing single quotes and checking page limits for each
+        taskBoxes.forEach((taskBox) => {
+            let taskTitle = taskBox.querySelector(".task-title").textContent.trim().replace(/'/g, "");
+            const taskProgress = parseInt(taskBox.querySelector(".progress-bar").innerText);
+
+            if (taskProgress > 0) {
+                currentY = checkPageLimit(currentY, 2, subsequentPagesTopMargin);
+                doc.setFontSize(12);
+                doc.setFont("Arial", "bold");
+                doc.text(taskTitle, pageWidth / 2, currentY, { align: "center" });
+                currentY += 1;
+
+                doc.setFontSize(10);
+                doc.setFillColor(220);
+                doc.rect(2.5, currentY, pageWidth - 5, 0.3, "F");
+                doc.setFillColor(60, 179, 113);
+                doc.rect(2.5, currentY, ((pageWidth - 5) * taskProgress) / 100, 0.3, "F");
+                doc.setFont("Arial", "bold");
+                doc.text(`${taskProgress}%`, pageWidth / 2, currentY + 0.3, { align: "center" });
+                currentY += 1;
+
+                doc.setFont("Arial", "bold");
+                doc.text("Tache", 3.5, currentY);
+                doc.text("Pourcentage", pageWidth - 5.5, currentY);
+                currentY += 0.7;
+
+                const subtasks = taskBox.querySelectorAll(".subtask");
+                subtasks.forEach((subtask) => {
+                    const subtaskTitle = subtask.querySelector("input[type='text']").value.replace(/'/g, "");
+                    const subtaskProgress = parseInt(subtask.querySelector("input[type='number']").value);
+
+                    if (subtaskProgress > 0) {
+                        currentY = checkPageLimit(currentY, 1, subsequentPagesTopMargin);
+                        doc.setFont("Arial", "normal");
+                        doc.text(subtaskTitle, 3.5, currentY);
+                        doc.text(`${subtaskProgress}%`, pageWidth - 5.5, currentY);
+                        currentY += 0.7;
+                    }
+                });
+                currentY += 0.5;
+            }
+        });
+
+        const observations = document.getElementById("observations").value || "Aucune observation";
+        currentY = checkPageLimit(currentY, 1.5, subsequentPagesTopMargin);
+
+        doc.setFont("times", "bold");
+        doc.text("Observations :", 2.5, currentY);
+        currentY += 1;
+
+        doc.setFont("times", "normal");
+        const availableWidth = pageWidth - 5;
+        const lines = doc.splitTextToSize(observations, availableWidth);
+
+        lines.forEach((line) => {
+            currentY = checkPageLimit(currentY, 0.75, subsequentPagesTopMargin);
+            doc.text(line, 2.5, currentY);
+            currentY += 0.75;
+        });
+
+        doc.save(`Compte_rendu_du_${date.toLocaleDateString('fr-FR').replace(/\//g, '-')}.pdf`);
+    });
+}
+
+
+
+
+   
+</script>
+</body>
+</html>
